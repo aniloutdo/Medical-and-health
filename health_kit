@@ -1,0 +1,202 @@
+import os
+import glob
+import serial
+import time
+
+import Adafruit_Nokia_LCD as LCD
+import Adafruit_GPIO.SPI as SPI
+
+from PIL import Image
+from PIL import ImageDraw
+from PIL import ImageFont
+
+import paho.mqtt.client as mqtt
+
+import urllib2  
+import urllib  
+
+import RPi.GPIO as GPIO
+
+import re
+# Raspberry Pi hardware SPI config:
+DC = 23
+RST = 24
+SPI_PORT = 0
+SPI_DEVICE = 0
+# Hardware SPI usage:
+disp = LCD.PCD8544(DC, RST, spi=SPI.SpiDev(SPI_PORT, SPI_DEVICE, max_speed_hz=4000000))
+# serial communication between raspberry pi and arduino 
+ser = serial.Serial('/dev/ttyACM0', 115200)
+#Temprature Sensor
+os.system('modprobe w1-gpio')
+os.system('modprobe w1-therm')
+base_dir = '/sys/bus/w1/devices/'
+device_folder = glob.glob(base_dir + '28*')[0]
+device_file = device_folder + '/w1_slave'
+
+# Initialize library.
+disp.begin(contrast=60)
+# Clear display.
+disp.clear()
+disp.display()
+def read_temp_raw():
+	f = open(device_file, 'r')
+	lines = f.readlines()
+	f.close()
+	return lines
+def read_temp():
+	lines = read_temp_raw()
+	while lines[0].strip()[-3:] != 'YES':
+		time.sleep(0.2)
+		lines = read_temp_raw()
+	equals_pos = lines[1].find('t=')
+	if equals_pos != -1:
+		temp_string = lines[1][equals_pos+2:]
+		temp_c = float(temp_string) / 1000.0
+	#temp_f = temp_c * 9.0 / 5.0 + 32.0
+	return temp_c
+def draw_heart():
+        draw.polygon([(2,22), (10,42), (25,22)], outline=0, fill=0)
+        draw.ellipse((2,10,12,32), outline=0, fill=0)
+        draw.ellipse((10,10,25,32), outline=0, fill=0)
+def draw_temp():
+        draw.rectangle((40,10,50,32), outline=0, fill=255)
+        draw.ellipse((35,22,55,42), outline=0, fill=255)
+        draw.rectangle((42,15,48,33), outline=0, fill=0)
+        draw.ellipse((40,27,50,37), outline=0, fill=0)
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(17,GPIO.OUT)
+GPIO.output(17,0)
+
+while True: 
+    # Create blank image for drawing.
+    # Make sure to create image with mode '1' for 1-bit color.
+    image = Image.new('1', (LCD.LCDWIDTH, LCD.LCDHEIGHT))
+    # Get drawing object to draw on image.
+    draw = ImageDraw.Draw(image)
+    # Draw a white filled box to clear the image.
+    draw.rectangle((0,0,LCD.LCDWIDTH,LCD.LCDHEIGHT), outline=255, fill=255)
+    # Load default font.
+    font = ImageFont.load_default()
+    # read Heart pulse from pulse sensor
+    Heart_pulse = ser.readline()
+    #data_left = ser.inWaiting() # return data in buffer
+    #Heart_pulse += ser.read(data_left)
+    print(Heart_pulse)
+    #read Temprature sensor
+    Temp_record = read_temp()
+    print(read_temp())
+    # Write some text.
+    draw.text((26,10), '{0}'.format(Heart_pulse[:2]), font=font)
+    draw.text((52,10), '{0}'.format('%0.1f'%Temp_record), font=font)
+    draw.ellipse((72,5,76,9), outline=0, fill=255)
+    draw_heart()
+    draw_temp()
+    #node.connect("test.mosquitto.org",1883)
+    # publish the sensor records
+    try:
+            node=mqtt.Client("python_pub") 
+            node.connect("broker.hivemq.com",1883)
+            node.publish("SHK/Temp","T = {0}".format('%0.1f'%Temp_record))
+            node.publish("SHK/Pulse","BPM =  {0}".format(Heart_pulse[:2]))
+    except:
+            pass
+    
+    temp_URL= 'http://redhawk-001-site1.btempurl.com/RegistrationForm2.svc/gettemp?temperature_sensor={"Temprature_records":"%d"}'%Temp_record
+    #print temp_URL
+    req_temp = urllib2.Request(temp_URL)
+    response = urllib2.urlopen(req_temp).read()
+    print 'response={0}'.format(response)
+    try:
+            pulse_URL='http://redhawk-001-site1.btempurl.com/RegistrationForm2.svc/getpulse?Pulse_sensor={{"BPM":"{0}"}}'.format(Heart_pulse[:2])
+            #print pulse_URL
+            req_pulse = urllib2.Request(pulse_URL)
+            response2 = urllib2.urlopen(req_pulse).read()
+            print 'response2={0}'.format(response2)
+    except:
+            pass
+    
+    # Display image.
+    disp.image(image)
+    disp.display()
+    time.sleep(1.0)
+    #print(ser.readline())
+    #Heart_pulse=ser.readline()[:2]
+    #print(Heart_pulse)
+    alarm_URL = 'http://redhawk-001-site1.btempurl.com/RegistrationForm2.svc/alarm?Major_Kit={"Major_Id":"1"}'
+    req_alarm = urllib2.Request(alarm_URL)
+    response_alarm = urllib2.urlopen(req_alarm).read()
+    print 'alarm_response={0}'.format(response_alarm)
+    if(response_alarm == 1): #patient in emargency case
+            print "Alarm"
+            GPIO.output(17,1)
+    #Heart_pulse=[]trast=60)
+# Clear display.
+disp.clear()
+disp.display()
+def read_temp_raw():
+	f = open(device_file, 'r')
+	lines = f.readlines()
+	f.close()
+	return lines
+def read_temp():
+	lines = read_temp_raw()
+	while lines[0].strip()[-3:] != 'YES':
+		time.sleep(0.2)
+		lines = read_temp_raw()
+	equals_pos = lines[1].find('t=')
+	if equals_pos != -1:
+		temp_string = lines[1][equals_pos+2:]
+		temp_c = float(temp_string) / 1000.0
+	#temp_f = temp_c * 9.0 / 5.0 + 32.0
+	return temp_c
+def draw_heart():
+        draw.polygon([(2,22), (10,42), (25,22)], outline=0, fill=0)
+        draw.ellipse((2,10,12,32), outline=0, fill=0)
+        draw.ellipse((10,10,25,32), outline=0, fill=0)
+def draw_temp():
+        draw.rectangle((40,10,50,32), outline=0, fill=255)
+        draw.ellipse((35,22,55,42), outline=0, fill=255)
+        draw.rectangle((42,15,48,33), outline=0, fill=0)
+        draw.ellipse((40,27,50,37), outline=0, fill=0)
+while True: 
+    # Create blank image for drawing.
+    # Make sure to create image with mode '1' for 1-bit color.
+    image = Image.new('1', (LCD.LCDWIDTH, LCD.LCDHEIGHT))
+    # Get drawing object to draw on image.
+    draw = ImageDraw.Draw(image)
+    # Draw a white filled box to clear the image.
+    draw.rectangle((0,0,LCD.LCDWIDTH,LCD.LCDHEIGHT), outline=255, fill=255)
+    # Load default font.
+    font = ImageFont.load_default()
+    # read Heart pulse from pulse sensor
+    Heart_pulse = ser.readline()[:2]
+    data_left = ser.inWaiting() # return data in buffer
+    Heart_pulse += ser.read(data_left)
+    print(Heart_pulse)
+    #read Temprature sensor
+    Temp_record = read_temp()
+    print(read_temp())
+    # Write some text.
+    draw.text((26,10), '{0}'.format(Heart_pulse[:2]), font=font)
+    draw.text((52,10), '{0}'.format('%0.2f'%Temp_record), font=font)
+    draw.ellipse((72,5,76,9), outline=0, fill=255)
+    draw_heart()
+    draw_temp()
+    
+    # publish the sensor records
+    node=mqtt.Client("python_pub")
+    node.connect("test.mosquitto.org",1883)
+    node.publish("SHK/Temp","T = {0}".format(Temp_record))
+    node.publish("SHK/Pulse","BPM =  {0}".format(Heart_pulse[:2]))
+    Heart_pulse=[]
+
+    # Display image.
+    disp.image(image)
+    disp.display()
+    time.sleep(1.0)
+    #print(ser.readline())
+    #Heart_pulse=ser.readline()[:2]
+    #print(Heart_pulse)
+    
+    
