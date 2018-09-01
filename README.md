@@ -5,6 +5,8 @@ According to research, we found that approximately 2000 people died monthly due 
 The IOT Based Health Care System for the Elderly is cheapest healthcare device based on the IOT platform for the patients and doctors. It provides a solution for measurement of body parameters like ECG, Temperature, Moisture, and Heartbeat. It also detects the body condition and location of the patients. The mobile application for the patient and doctors contain a very simple GUI Interface for reading all the parameters in the mobile or at anywhere in the world by using internet connectivity. In this project we are using various sensors and modules for performing a different type of functions and the „Thingspeak‟ Cloud service is used for storing all the data in the cloud, it provides security and facility of accessing all the parameters at any time which is very useful for the doctors at the time of treatment. This system also generates an alert when it required that means at the time of any critical conditions and notifications about the medicines, location change, conditions etc.
 
 What it Does
+
+
 This system will make it easier for the patient to follow up his health status on a regular basis, help him contact the nearest hospital or emergency center in critical situations, and connect with the doctor.
 
 The proposed system can also do a report on a continuous basis for the patient to be able to follow his condition first hand. Also, the doctor can find out the patient’s health status and to what extent it reached.
